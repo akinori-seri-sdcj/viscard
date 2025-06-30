@@ -8,11 +8,16 @@ Sansan代替の名刺管理ツール - フロントエンド実装
 
 ## 技術スタック
 
-- React 18.3.1 + TypeScript
-- Vite 5.4.2
-- Tailwind CSS 3.4.1
-- Lucide React (アイコン)
-- Recharts (チャート)
+- **フロントエンド**:
+  - React 18.3.1 + TypeScript
+  - Vite 5.4.2
+  - Tailwind CSS 3.4.1
+  - Lucide React (アイコン)
+  - Recharts (チャート)
+- **バックエンド**:
+  - Node.js + Express.js + TypeScript
+  - Prisma (ORM)
+  - SQLite (開発用)
 
 ## セットアップ
 
@@ -39,7 +44,7 @@ npm run build
 
 ## 開発状況
 
-現在はフロントエンドのみ実装済み。モックデータを使用してUIデモが可能です。
+フロントエンドは実装済みで、一部の機能はバックエンドAPIと連携しています。開発用データベースとしてSQLiteを使用しています。
 
 詳細な開発情報は `docs/DEVELOPMENT_HANDOVER.md` を参照してください。
 

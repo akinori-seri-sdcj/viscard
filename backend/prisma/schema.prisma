@@ -1,0 +1,74 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  company_id    String   @id @default(cuid())
+  name          String
+  address       String?
+  phone_number  String?
+  website_url   String?
+  industry      String?
+  employee_size Int?
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  persons       Person[]
+}
+
+model Person {
+  person_id    String   @id @default(cuid())
+  company_id   String
+  company      Company  @relation(fields: [company_id], references: [company_id])
+  first_name   String
+  last_name    String
+  full_name    String
+  department   String?
+  title        String?
+  email        String?  @unique
+  phone_mobile String?
+  phone_direct String?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  businessCards BusinessCard[]
+  interactions  Interaction[]
+}
+
+model BusinessCard {
+  card_id           String   @id @default(cuid())
+  person_id         String
+  person            Person   @relation(fields: [person_id], references: [person_id])
+  uploader_user_id  String
+  image_url         String
+  ocr_raw_data      Json?
+  exchange_date     DateTime
+  exchange_time     String?
+  exchange_location String?
+  latitude          Float?
+  longitude         Float?
+  notes             String?
+  tags              String? // Stored as comma-separated string for SQLite compatibility
+  is_public         Boolean  @default(false)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+}
+
+model Interaction {
+  interaction_id   String   @id @default(cuid())
+  person_id        String
+  person           Person   @relation(fields: [person_id], references: [person_id])
+  interaction_date DateTime
+  interaction_type String   // 'Meeting' | 'Call' | 'Email'
+  purpose          String?
+  details          String?
+  created_by       String
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+}

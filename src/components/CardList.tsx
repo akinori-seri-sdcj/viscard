@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Filter, Calendar, MapPin, Tag, Eye, Edit3, Trash2, Download } from 'lucide-react';
-import { mockBusinessCards } from '../data/mockData';
+
 import { BusinessCard } from '../types';
 
 interface CardListProps {
@@ -13,11 +13,34 @@ const CardList: React.FC<CardListProps> = ({ onCardSelect }) => {
   const [sortBy, setSortBy] = useState<'date' | 'name' | 'company'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
+  const [cards, setCards] = useState<BusinessCard[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchCards = async () => {
+      try {
+        const response = await fetch('http://localhost:3001/api/cards');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data: BusinessCard[] = await response.json();
+        setCards(data);
+      } catch (e: any) {
+        setError(e.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCards();
+  }, []);
+
   // Get all unique tags
-  const allTags = Array.from(new Set(mockBusinessCards.flatMap(card => card.tags || [])));
+  const allTags = Array.from(new Set(cards.flatMap(card => card.tags || [])));
 
   // Filter and sort cards
-  const filteredCards = mockBusinessCards
+  const filteredCards = cards
     .filter(card => {
       const matchesSearch = !searchTerm || 
         card.person?.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -25,8 +48,11 @@ const CardList: React.FC<CardListProps> = ({ onCardSelect }) => {
         card.exchange_location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         card.notes?.toLowerCase().includes(searchTerm.toLowerCase());
 
+      // For SQLite, tags are stored as a comma-separated string.
+      // We need to split them into an array for filtering.
+      const cardTags = card.tags ? card.tags.split(',').map(tag => tag.trim()) : [];
       const matchesTags = selectedTags.length === 0 || 
-        selectedTags.some(tag => card.tags?.includes(tag));
+        selectedTags.some(tag => cardTags.includes(tag));
 
       return matchesSearch && matchesTags;
     })
@@ -137,100 +163,101 @@ const CardList: React.FC<CardListProps> = ({ onCardSelect }) => {
       </div>
 
       {/* Results Info */}
-      <div className="flex items-center justify-between">
-        <p className="text-gray-600">
-          {filteredCards.length}件の名刺が見つかりました
-        </p>
-        <button className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200">
-          <Download className="w-4 h-4" />
-          <span>エクスポート</span>
-        </button>
-      </div>
+      {loading && <div className="text-center py-12 text-gray-500">Loading cards...</div>}
+      {error && <div className="text-center py-12 text-red-500">Error: {error}</div>}
+      {!loading && !error && (
+        <div className="flex items-center justify-between">
+          <p className="text-gray-600">
+            {filteredCards.length}件の名刺が見つかりました
+          </p>
+          <button className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200">
+            <Download className="w-4 h-4" />
+            <span>エクスポート</span>
+          </button>
+        </div>
+      )}
 
       {/* Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredCards.map(card => (
-          <div
-            key={card.card_id}
-            className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200 cursor-pointer group"
-            onClick={() => onCardSelect(card)}
-          >
-            {/* Card Image Preview */}
-            <div className="w-full h-32 bg-gray-100 rounded-lg mb-4 flex items-center justify-center relative overflow-hidden">
-              <img
-                src={card.image_url}
-                alt="名刺"
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                  target.nextElementSibling?.classList.remove('hidden');
-                }}
-              />
-              <div className="hidden w-full h-full bg-gray-200 flex items-center justify-center">
-                <span className="text-gray-500 text-sm">名刺画像</span>
-              </div>
-            </div>
-
-            {/* Card Info */}
-            <div className="space-y-3">
-              <div>
-                <h3 className="font-semibold text-gray-900 text-lg">{card.person?.full_name}</h3>
-                <p className="text-gray-600">{card.person?.title} • {card.person?.department}</p>
-                <p className="text-blue-600 font-medium">{card.person?.company?.name}</p>
+      {!loading && !error && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredCards.map(card => (
+            <div
+              key={card.card_id}
+              className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200 cursor-pointer group"
+              onClick={() => onCardSelect(card)}
+            >
+              {/* Card Image Preview */}
+              <div className="w-full h-32 bg-gray-100 rounded-lg mb-4 flex items-center justify-center relative overflow-hidden">
+                <img
+                  src={card.image_url}
+                  alt="名刺"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    target.nextElementSibling?.classList.remove('hidden');
+                  }}
+                />
+                <div className="hidden w-full h-full bg-gray-200 flex items-center justify-center">
+                  <span className="text-gray-500 text-sm">名刺画像</span>
+                </div>
               </div>
 
-              <div className="flex items-center space-x-2 text-sm text-gray-500">
-                <Calendar className="w-4 h-4" />
-                <span>{card.exchange_date}</span>
-                {card.exchange_location && (
-                  <>
-                    <MapPin className="w-4 h-4 ml-2" />
-                    <span>{card.exchange_location}</span>
-                  </>
+              {/* Card Info */}
+              <div className="space-y-3">
+                <div>
+                  <h3 className="font-semibold text-gray-900 text-lg">{card.person?.full_name}</h3>
+                  <p className="text-gray-600">{card.person?.title} • {card.person?.department}</p>
+                  <p className="text-blue-600 font-medium">{card.person?.company?.name}</p>
+                </div>
+
+                <div className="flex items-center space-x-2 text-sm text-gray-500">
+                  <Calendar className="w-4 h-4" />
+                  <span>{card.exchange_date}</span>
+                  {card.exchange_location && (
+                    <>
+                      <MapPin className="w-4 h-4 ml-2" />
+                      <span>{card.exchange_location}</span>
+                    </>
+                  )}
+                </div>
+
+                {card.tags && card.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {card.tags.split(',').map((tag, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                      >
+                        {tag.trim()}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {card.notes && (
+                  <p className="text-sm text-gray-600 line-clamp-2">{card.notes}</p>
                 )}
               </div>
 
-              {card.tags && card.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {card.tags.slice(0, 3).map((tag, idx) => (
-                    <span
-                      key={idx}
-                      className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                  {card.tags.length > 3 && (
-                    <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                      +{card.tags.length - 3}
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {card.notes && (
-                <p className="text-sm text-gray-600 line-clamp-2">{card.notes}</p>
-              )}
+              {/* Action Buttons */}
+              <div className="flex justify-end space-x-2 mt-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                  <Eye className="w-4 h-4" />
+                </button>
+                <button className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors duration-200">
+                  <Edit3 className="w-4 h-4" />
+                </button>
+                <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
+          ))}
+        </div>
+      )}
 
-            {/* Action Buttons */}
-            <div className="flex justify-end space-x-2 mt-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200">
-                <Eye className="w-4 h-4" />
-              </button>
-              <button className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors duration-200">
-                <Edit3 className="w-4 h-4" />
-              </button>
-              <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200">
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {filteredCards.length === 0 && (
+      {!loading && !error && filteredCards.length === 0 && (
         <div className="text-center py-12">
           <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Search className="w-8 h-8 text-gray-400" />
